@@ -115,7 +115,7 @@ INSERT INTO user (name, pwd) VALUES
 
   Using this pattern consistently throughout your code will ensure that all database resources are properly closed.
 
-  `Note:` In our case, since we wrapped openSession() in an util class, the try-with-resource should then instead be around our util class method getSqlSession. Otherwise, the session would be out of scope before we actually use it.
+  `Note:` In our case, since we wrapped openSession() in an util class, the try-with-resource should then instead be around the reference to the class method getSqlSession. Otherwise, the session would be out of scope before we actually use it.
 
 * Mapper Instances
 
