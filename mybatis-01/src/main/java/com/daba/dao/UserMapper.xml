@@ -2,10 +2,36 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<!--namespace: target DAP/Mapper interface-->
-<mapper namespace="com.daba.dao.UserDao">
+<!--namespace: target DAO/Mapper interface-->
+<mapper namespace="com.daba.dao.UserMapper">
     <!-- id is the name of the method. resultType is the generic type of the returning collection -->
     <select id="getUserList" resultType="com.daba.pojo.User">
         SELECT * FROM mybatis.user;
+    </select>
+
+    <!-- In this case parameter type can be omitted since it is a native type -->
+    <select id="getUserById" parameterType="int" resultType="com.daba.pojo.User">
+        SELECT * FROM mybatis.user where id=#{id};
+    </select>
+
+    <!-- Notice that the "insertUser" method takes a parameter of type User -->
+    <!-- Essentially MyBatis is flatting the fields of Objects into parameters -->
+    <!-- It looks like the key related stuff do nothing. They are just there
+            in case needed in the future -->
+    <insert id="insertUser" parameterType="com.daba.pojo.User" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO mybatis.user (name, pwd) VALUES (#{name}, #{pwd})
+    </insert>
+
+    <update id="updateUser" parameterType="com.daba.pojo.User">
+        UPDATE mybatis.user SET name=#{name}, pwd=#{pwd} WHERE id = #{id};
+    </update>
+
+    <delete id="deleteUser" parameterType="int">
+        DELETE FROM mybatis.user WHERE id=#{id};
+    </delete>
+
+    <!-- Note that no parameter is specified. Because only the matcher expr is needed -->
+    <select id="getUsersLike" resultType="com.daba.pojo.User">
+        SELECT * FROM mybatis.user WHERE name like #{expr};
     </select>
 </mapper>

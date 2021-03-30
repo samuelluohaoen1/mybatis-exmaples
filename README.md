@@ -4,6 +4,8 @@ In plain words, the goal of MyBatis is not to do fancy things, but to simply mak
 
 # 2. A new MyBatis project
 
+``The next few sections are discussed around Module mybatis-01`` 
+
 Dependencies of this sample project:
 
 * A pre-created mySQL database
@@ -40,13 +42,13 @@ INSERT INTO user (name, pwd) VALUES
 * Create "mybatis-config.xml" MyBatis Core config file.
 * Create util class for retrieving sqlSessionFactory as recommended by MyBatis official documentation.
 
-## 2.3. Coding
+## 2.2. Coding
 
 * Create an entity class.
-* Create an DAO interface.
-* Implement the DAO interface: When only using JDBC, DAO interface had to be implemented and many DB connectivity issues need to be considered. When using MyBatis, those concerns are now being handled by MyBatis. Therefore, we only need to point MyBatis to the right direction by using a Mapper.xml i.e "UserMapper.xml".
+* Create an Mapper (Essentially DAO) interface.
+* Implement the Mapper interface: When only using JDBC, DAO interfaces had to be implemented and many DB connectivity issues need to be considered. When using MyBatis, those concerns are now being handled by MyBatis. Therefore, we only need to point MyBatis to the right direction by using a Mapper.xml i.e "UserMapper.xml".
 
-## 2.4. Testing
+## 2.3. Testing
 
 **Note:** A couple very common exceptions:
 
@@ -126,6 +128,137 @@ INSERT INTO user (name, pwd) VALUES
     BlogMapper mapper = session.getMapper(BlogMapper.class);
     // do work
   }
+  ```
+
+
+# 3. CRUD
+
+## 3.1. Namespace
+
+The namespace field in Mapper.xml needs to be consistent with the name of the mapper interface.
+
+## 3.2. Read (XML select tag)
+
+```xml
+<!--namespace: target DAO/Mapper interface-->
+<mapper namespace="com.daba.dao.UserMapper">
+    <!-- id is the name of the method. resultType is the generic type of the returning collection -->
+    <select id="getUserList" resultType="com.daba.pojo.User">
+        SELECT * FROM mybatis.user;
+    </select>
+	
+    <!-- In this case parameter type can be omitted since it is a native type -->
+    <select id="getUserListById" parameterType="int" resultType="com.daba.pojo.User">
+        SELECT * FROM mybatis.user where id=#{id};
+    </select>
+</mapper>
+```
+
+
+
+* id: The name of the retrival method in the namespace.
+* resultType: The generic return type of the query.
+
+* parameterType: The types of the parameters of the method. Use #{paramterName} in SQL to dicate which parameter to use.
+
+## 3.3. Create (XML insert tag)
+
+In addition to the above XML snippet: 
+
+```XML
+<!-- Notice that the "insertUser" method takes a parameter of type User -->
+<!-- Essentially MyBatis is flatting the fields of Objects into parameters -->
+<!-- It looks like the key related stuff do nothing. They are just there 
+            in case needed in the future -->
+<insert id="insertUser" parameterType="com.daba.pojo.User">
+    INSERT INTO mybatis.user (name, pwd) VALUES (#{name}, #{pwd})
+</insert>
+```
+
+* It is important to remember that any CUD operations need to be committed. Unlike JDBC, MyBatis does not auto-commit by default.
+
+## 3.4. Update (XML update tag)
+
+```XML
+<update id="updateUser" parameterType="com.daba.pojo.User">
+    UPDATE mybatis.user SET name=#{name}, pwd=#{pwd} WHERE id = #{id};
+</update>
+
+```
+
+## 3.5. DELETE (XML delete tag)
+
+```XML
+<delete id="deleteUser" parameterType="int">
+    DELETE FROM mybatis.user WHERE id=#{id};
+</delete>
+```
+
+## 3.6. Fuzzy Query (Using "like" and wildcards)
+
+How the mapper interface method is defined: 
+
+```java
+// Fuzzy Query
+List<User> getUsersLike(String s);
+```
+
+Add following tag in Mapper.xml:
+
+```xml
+<!-- Note that no parameter is specified. Because only the matcher expr is needed -->
+<!-- An alternative way to do this is use wildcards here instead of in Java -->
+<select id="getUsersLike" resultType="com.daba.pojo.User">
+    SELECT * FROM mybatis.user WHERE name like #{expr};
+</select>
+```
+
+How to use the mapper:
+
+```java
+@Test
+public void getUsersLike(){
+    try(SqlSession sqlSession = MybatisUtils.getSqlSession()){
+        UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+        // Keep in mind that SQL is case insensitive
+        List<User> usersLike = mapper.getUsersLike("%M%"); 
+        System.out.println(usersLike);
+    }
+}
+```
+
+* When dealing with fuzzy query...`BEWARE OF SQL INJECTION!!!`
+
+## 3.7. Epilogue
+
+### 3.7.1  Other ways for parameter mapping
+
+For example, using paramaterType="map" i.e. using a Map collection for value-parameter mapping. Where the keys are the parameters in #{...} and values are their corresponding values. This is useful in scenarios like when you have lots of parameters. 
+
+# 4. MyBatis Configuration XML
+
+``The next few sections are discussed around Module mybatis-02`` 
+
+## 4.1 Core Configurations (mybatis.org)
+
+* mybatis-config.xml (Any name is fine. This is officially recommended)
+
+  * The MyBatis configuration contains settings and properties that have a dramatic effect on how MyBatis behaves. The high level structure of the document is as follows:
+
+  ```xml
+  configuration
+      properties
+      settings
+      typeAliases
+      typeHandlers
+      objectFactory
+      plugins
+      environments
+      environment
+      transactionManager
+      dataSource
+      databaseIdProvider
+      mappers
   ```
 
   
