@@ -1,0 +1,6 @@
+[INFO][21-03-30][com.daba.dao.UserMapperTest]info: Executing testLog4j method.
+[DEBUG][21-03-30][com.daba.dao.UserMapperTest]debug: Executing testLog4j method.
+[ERROR][21-03-30][com.daba.dao.UserMapperTest]error: Executing testLog4j method.
+[INFO][21-03-30][com.daba.dao.UserMapperTest]info: Executing testLog4j method.
+[DEBUG][21-03-30][com.daba.dao.UserMapperTest]debug: Executing testLog4j method.
+[ERROR][21-03-30][com.daba.dao.UserMapperTest]error: Executing testLog4j method.
