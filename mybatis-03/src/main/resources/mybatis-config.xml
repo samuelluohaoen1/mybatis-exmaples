@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+    <!-- Reference external Properties file -->
+    <properties resource="db.properties">
+        <!-- We can also add new properties to be referenced below -->
+        <property name="env" value="development"/>
+    </properties>
+
+    <!-- Method 1 -->
+    <typeAliases>
+        <typeAlias type="com.daba.pojo.User" alias="User"/>
+    </typeAliases>
+
+    <!-- Method 2 -->
+    <!-- MyBatis automatically searches for Java classes as beans. The default name
+        for these beans are the lowercase letters of the class name so that you
+        can distinguish the auto detected ones from explicit ones-->
+<!--    <typeAliases>-->
+<!--        <package name="com.daba.pojo"/>-->
+<!--    </typeAliases>-->
+
+    <environments default="${env}">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <!-- Each Mapper.xml needs to be registered here! -->
+    <mappers>
+        <mapper resource="com/daba/dao/UserMapper.xml"/>
+<!--        <mapper class="com.daba.dao.UserMapper"-->
+<!--        <package name="com.daba.dao"/>-->
+    </mappers>
+
+</configuration>
