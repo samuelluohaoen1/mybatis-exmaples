@@ -4,19 +4,19 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.daba.dao.UserMapper">
-    <select id="getUserList" resultType="com.daba.pojo.User">
+    <select id="getUserList" resultType="User">
         SELECT * FROM mybatis.user;
     </select>
 
-    <select id="getUserById" parameterType="int" resultType="com.daba.pojo.User">
+    <select id="getUserById" parameterType="int" resultType="User">
         SELECT * FROM mybatis.user where id=#{id};
     </select>
 
-    <insert id="insertUser" parameterType="com.daba.pojo.User" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    <insert id="insertUser" parameterType="User" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO mybatis.user (name, pwd) VALUES (#{name}, #{pwd})
     </insert>
 
-    <update id="updateUser" parameterType="com.daba.pojo.User">
+    <update id="updateUser" parameterType="User">
         UPDATE mybatis.user SET name=#{name}, pwd=#{pwd} WHERE id = #{id};
     </update>
 
