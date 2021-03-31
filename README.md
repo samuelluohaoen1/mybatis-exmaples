@@ -433,7 +433,7 @@ This is because the field name does not match the variable name in DB. The typeH
 </select>
 ```
 
-## 5.2. Solution 2 - resultMap attribute
+## 5.2. Solution 2 - resultMap tag
 
 ```xml
 <mapper namespace="com.daba.dao.UserMapper">
@@ -536,3 +536,348 @@ Which one to use to be specified in the settings tag in mybatis-config.xml.
       logger.error("error: Executing testLog4j method.");
   }
   ```
+
+# 7. Annotations
+
+``The next few sections are discussed around Module mybatis-05``
+
+To map DAO methods to beans, one can use annotations.
+
+In `mybatis-config.xml`, the mappers tag now look like this:
+
+```xml
+<mappers>
+    <mapper class="com.daba.dao.UserMapper"/>
+</mappers>
+```
+
+In `UserMapper.java`, annotate like this:
+
+```JAVA
+public interface UserMapper {
+    @Select("SELECT id, name, pwd as password FROM mybatis.user;")
+    List<User> getUsers();
+}
+
+// Now that we do not have a Mapper XML, we specify parameters used in SQL
+// using the @Param annotation
+@Select("SELECT id, name, pwd as password FROM mybatis.user WHERE id=#{id};")
+User getUserById(@Param("id") int id);
+
+// Like the example for previous modules, if the parameter is a reference,
+// no need to use @Param
+@Update("UPDATE mybatis.user SET name=#{name}, pwd=#{password} WHERE id = #{id};")
+int updateUserById(User user);
+```
+
+Note that because now we are using annotations, we cannot use result mapping now. But we can still map property names to column names using aliases.
+
+**About @Param() annotation:**
+
+* Java native types need to have @Param() annotations when being used, including String.
+* Custom types do not need it.
+* If there is only one native type, do not need it. But recommended for clarity and good habit.
+* The parameters used in SQL statements should have matching names with names in @Param()
+* Difference between #{} and ${}: 
+  * #{} attempts to prevent SQL injection while ${} does not.
+  * Therefore, #{} is recommended.
+
+# 8. ResultMap: Association & Collection
+
+``The next few sections are discussed around Module mybatis-06``
+
+To prepare for this section, create a new table in mybatis DB.
+
+```mysql
+CREATE TABLE `teacher` (
+  `id` INT NOT NULL,
+  `name` VARCHAR(30) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8
+
+INSERT INTO teacher(`id`, `name`) VALUES (1, 'Alex'); 
+
+CREATE TABLE `student` (
+  `id` INT NOT NULL,
+  `name` VARCHAR(30) DEFAULT NULL,
+  `tid` INT DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fktid` (`tid`),
+  CONSTRAINT `fktid` FOREIGN KEY (`tid`) REFERENCES `teacher` (`id`)
+) DEFAULT CHARSET=utf8
+
+INSERT INTO `student` (`id`, `name`, `tid`) VALUES ('1', 'Daba', '1'); 
+INSERT INTO `student` (`id`, `name`, `tid`) VALUES ('2', 'Joanna', '1'); 
+INSERT INTO `student` (`id`, `name`, `tid`) VALUES ('3', 'Jason', '1'); 
+INSERT INTO `student` (`id`, `name`, `tid`) VALUES ('4', 'Mark', '1'); 
+INSERT INTO `student` (`id`, `name`, `tid`) VALUES ('5', 'Twenty', '1');
+```
+
+
+
+Association: Many similar entities associated with another entity.
+
+Collection: A single entity has a collection a many similar entities.
+
+## 8.1. Association Query: Many to one relationship
+
+`note`: When filling in child tags of resultMap tag, explicit add one child tag for each property needed.
+
+When each query result should contain objects of another class, special treatments are needed. In general,  if many of our query results share a common reference to another object, it is a association relationship.
+
+In `StudentMapper.xml`:
+
+```xml
+<!-- Need to handle complicated Properties separately
+     Objects: association tag
+     Collections: collection tag
+     Here, each teacher refers should to the same teacher object
+    -->
+<!-- Method 1: Sub-query -->
+<select id="getStudent" resultMap="StudentTeacher">
+    SELECT * FROM student;
+</select>
+
+<resultMap id="StudentTeacher" type="Student">
+    <result property="id" column="id"/>
+    <result property="name" column="name"/>
+    <association property="teacher" column="tid" javaType="Teacher" select="getTeacher"/>
+</resultMap>
+
+<select id="getTeacher" resultType="Teacher">
+    SELECT * FROM teacher WHERE id=#{tid};
+</select>
+
+<!--  Method 2: nesting result  -->
+<select id="getStudent2" resultMap="StudentTeacher2">
+    SELECT s.id sid, s.name sname, t.name tname
+    FROM student s, teacher t
+    WHERE s.tid = t.id;
+</select>
+
+<resultMap id="StudentTeacher2" type="Student">
+    <result property="id" column="sid"/>
+    <result property="name" column="sname"/>
+    <association property="teacher" javaType="Teacher">
+        <result property="name" column="tname"/>
+    </association>
+</resultMap>
+```
+
+Plainly speaking, in **method 1**, when we see that one property is actually another class, we can define another tag to tell MyBatis how to retrieve what we want. Thus, Sub-query.
+
+In **method 2**, we write a jumbo union query and tell MyBatis what to expect as result. See that method 2 results in less tags which could be a big advantage.
+
+
+
+## 8.2. Collection Query: One to Many relationship
+
+``The next few sections are discussed around Module mybatis-07``
+
+Using the student-teacher example in 8.1, this relationship can be viewed as: One teacher has a collection of students.
+
+Very similar to mybatis-06, just look into the mapper files and java classes.
+
+# 9. Dynamic SQL
+
+Dynamic SQL is rather intuitively. Therefore, no full blown implemented module is demonstrated.
+
+To use Dynamic SQL:
+
+* Use map to pass parameters to your query i.e. use the attribute `paramaterType="map"` when writing the mapper bean.
+* Apply Dynamic SQL logic in query code. The Syntax is similar to JSTL.
+* One can also combine Dynamic SQL with fuzzy query. The combination of the two is really robust.
+
+## 9.1. `if` tag
+
+`Suppose that we are now dealing with the following schema:`
+
+```xml
+CREATE TABLE `blog`(
+`id` VARCHAR(50) NOT NULL COMMENT 'blog id',
+`title` VARCHAR(100) NOT NULL COMMENT 'blog title',
+`author` VARCHAR(30) NOT NULL COMMENT 'blog author',
+`create_time` DATETIME NOT NULL COMMENT 'creation time',
+`views` INT(30) NOT NULL COMMENT 'number of views'
+)DEFAULT CHARSET=utf8;
+```
+
+**First thing to note is that** we have a column named `create_time`. This is a good time to use the `mapUnderscoreToCamelCase` setting (assuming you want to adhere your Java code to standard).
+
+In a typical `BlogMapper.xml`:
+
+```xml
+<!--  a select bean  -->
+<select id="queryBlogIf" parameterType="map" resultType="blog">
+	SELECT * FROM blog WHERE 1=1  # <----- take a mental note at this awkward WHERE
+    <if test= "title != null">
+    	AND title=#{title}
+    </if>
+    <if test= "author != null">
+    	AND author=#{author}
+    </if>
+	;
+</select>
+```
+
+Hopefully it is clear what is going on from the above example.
+
+## 9.2. `where` tag
+
+To resolve the awkward WHERE issue in 9.1. The `where` tag is introducted. 
+
+It inserts a SQL `WHERE` automatically if and only if at least one logic tag below is true.
+
+`where` tag will also trim the dangling `AND`, `OR` smartly.
+
+Therefore, the same exmaple from 9.1 can be rewritten as:
+
+```xml
+<!--  a select bean  -->
+<select id="queryBlogIf" parameterType="map" resultType="blog">
+	SELECT * FROM blog
+    <where>
+        <if test= "title != null">
+            AND title=#{title}
+        </if>
+        <if test= "author != null">
+            AND author=#{author}
+        </if>
+    </where>
+	;
+</select>
+```
+
+
+
+## 9.3. `choose`, `when`, `otherwise` tags
+
+When used together `choose`, `when`, `otherwise` behaves very much like switch statements.
+
+In a typical `BlogMapper.xml`:
+
+```xml
+<select id="queryBlogChoose" parameterType="map" resultType="blog">
+	SELECT * FROM blog
+    <where>
+    	<choose>
+        	<when test="title != null">
+            	title=#{title}
+            </when>
+            <when test='author != null'>
+            	and author=#{author}
+            </when>
+            <otherwise>
+            	and views=#{views}
+            </otherwise>
+        </choose>
+    </where>
+    ;
+</select>
+```
+
+`Note` that similar to a boolean "or", if one when is true, the rest have been short-circuited.
+
+## 9.4.  `set` tag
+
+Similar to `where`, `set` is a useful tag when working with SQL `update`
+
+It will dynamically add SQL `set` and trim "," (commas) smartly.
+
+In a typical `BlogMapper.xml`:
+
+```XML
+<update id="updateBlog" parameterType="map">
+	UPDATE BLOG
+    <set>
+    	<if test="title != null">
+        	title = #{title},
+        </if>
+        <if test="author != null">
+        	author = #{author}
+        </if>
+    </set>
+    WHERE id=#{id};
+</update>
+```
+
+`Note` that when #{id} parameter should also be stored in the paramter map in the case. Because where else could you put it?
+
+Also, unlike `where`, it wouldn't make sense for all the `if` tags to evaluate to false. Because we need to update at least one column.
+
+## 9.5. `trim` tag
+
+`set` and `where` are basically impletations of trim. You can customize behaviors similar to `set` and `where` using trim to make your logic even more robust.
+
+## 9.6. `sql` tag
+
+Save SQL snippets as beans in Mapper XML for reuse.
+
+In a typical `BlogMapper.xml`:
+
+```xml
+<!--  definition  -->
+<sql id="if-title-author">
+	<if test="title != null">
+    	title = #{title}
+    </if>
+    <if test="author != null">
+    	and author = #{author}
+    </if>
+</sql>
+
+<!--  usage  -->
+<select id="queryBlogIf" parameterType="map" resultType="blog">
+	select * from blog
+    <where>
+    	<include refid="if-title-author"/>
+    </where>
+    ;
+</select>
+```
+
+`Note`:  Not good for complicated SQL logic. For example, if multiple tables are involved, it would be hard to keep the alias names consistent. Also, do not put tags like `where` in the snippets because they are way too case specific.
+
+## 9.7. `foreach` tag
+
+Suppose we want to implement the following SQL:
+
+```mysql
+SELECT * FROM blog WHERE 1=1 AND (id=1 OR id=2 OR id=3);
+```
+
+If we brute force, we need to give all 3 `id`s an alias. Apparently this gets absurd as we have more `id`s.
+
+Therefore,
+
+In a typical `BlogMapper.xml`:
+
+```xml
+<select id="queryBlogForeach" parameterType="map" resultType="blog">
+	select * from blog
+    
+    <where>
+    	<foreach collection="ids" item="id" open="AND (" close=")" separator="OR">
+        	id = #{id}
+        </foreach>
+    </where>
+    ;
+</select>
+```
+
+How to provide the collection needed for `foreach`:
+
+In a typical `service class`:
+
+```java
+/* Note that we want a <Object, Object> or <String, Object> because
+   parameters can really be any class. */
+HashMap map = new HashMap();	// Another demonstration of Map's robustness
+ArrayList<Integer> ids = new ArrayList<Integer>();
+ids.add(1);
+ids.add(2);
+map.put("ids", ids);
+
+List<Blog> blogs = mapper.queryBlogForeach(map);
+```
+
