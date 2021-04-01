@@ -881,3 +881,94 @@ map.put("ids", ids);
 List<Blog> blogs = mapper.queryBlogForeach(map);
 ```
 
+# 10. Cache
+
+``The next few sections are discussed around Module mybatis-08``
+
+**Some Data Server key concepts to know**
+
+* Master-Slave Replication
+* Read/Write Splitting
+* Cache servers and actual data servers
+
+**Why caching?**
+
+	* It is costly to connect to SQL server, run transaction, commit, disconnect from server even with pooled technology.
+	* Cache the result of query in RAM to optimize.
+	* When we lookup similar data, we can simply retrieve it from cache. Greatly improves the performance of highly concurrent environments.
+
+**What kind of data are good candidate for caching?**
+
+* Data that are often read but rarely changed.
+
+# 10.1. MyBatis Cache
+
+* Level 1 Cache: `SqlSession` level cache. Accessed directly when reading. This is enabled by default (plus I don't think we can disable it).
+* Level 2 Cache: namespace level cache. Must be access explicitly and can be customized by implementing interfaces provided by MyBatis.
+
+**When is cached cleared?**
+
+* Cache is useless when we are reading different entries.
+* Cache is also useless when we use sqlSession of another Mapper XML.
+
+* Level 1 Cache is cleared whenever a CUD operation happens. However, we can explictly stop a CUP operation from clearing cache by using `flushCache"false"` attribute.
+
+  ```xml
+  <update id="updateUser" parameterType="user" flushCache="false">
+  	...
+  </update>
+  ```
+
+   
+
+* MyBatis also clears old cache by using either LRU(default) or FIFO.
+
+* We can also clear cache manually using `sqlSession.clearCache()`.
+
+* `Note` that when a transaction is done (the lifetime of a `SqlSession` object), we lose our level 1 Cache. This is pretty useless. **We want cache that persists among users where one user can use the cache from other users**.
+
+## 10.2. Level 2 Cache
+
+Level 2 Cache is also called Global Cache (But remember,  it is namespace level). It exists because level 1 cache is nearly worthless.
+
+To use level 2 cache, simply add `cache` tag in Mapper XML.
+
+There is a setting called `cacheEnabled` which is enabled by default. But just in case it is recommended to set it to true explicitly.
+
+In `UserMapper.xml`:
+
+```xml
+<mapper namespace="com.daba.dao.UserMapper">
+	
+    <!--  This tag enables cache  -->
+    <cache/>
+    
+    <!-- We can also config some options -->
+    <!--
+    <cache eviction="LRU" flushInterval="60000" size="512"  readOnly="true"/>
+	-->
+
+    <select id="selectUserById" parameterType="_int" resultType="User">
+        SELECT * FROM user WHERE id=#{id};
+    </select>
+</mapper>
+```
+
+**How it works**:  
+
+* When a query is made, the result is stored in a Level 1 cache.
+* When a session closes, its level 1 cache is also cleared. However, level 1 cache's data will be saved into level 2 cahe.
+* Now when a new session in the same namespace is created, that new session will automatically use level 2 cache.
+
+**Note**:
+
+* If readOnly attribute is "false", the Java object being cached must implement the java.io.Serializable interface! Else, you get:
+
+  ```txt
+  org.apache.ibatis.cache.CacheException: Error serializing object.
+  ```
+
+
+
+**This concludes most useful things to know about MyBatis.**
+
