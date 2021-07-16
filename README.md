@@ -1,6 +1,6 @@
 # 1. Introduction
 
-In plain words, the goal of MyBatis is not to do fancy things, but to simply make the life of developers easier. Without MyBatis, Java developers had to use JDBC where they have to deal with trivial DB connectivity related logics. MyBatis now gets rid of the need of worrying about DB connectivity logics, thus, increases code readability and scalability.  Do note that anything you can achieve with MyBatis, you can achieve the same without MyBatis. --- Personal opinion - 仁者见仁智者见智。
+In plain words, the goal of MyBatis is not to do fancy things, but to simply make the life of developers easier. Without MyBatis, Java developers had to use JDBC where they have to deal with trivial DB connectivity related logics. MyBatis now gets rid of the need of worrying about DB connectivity logics, thus, increases code readability and scalability.  Do note that anything you can achieve with MyBatis, you can achieve the same without MyBatis.
 
 # 2. A new MyBatis project
 
